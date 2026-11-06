@@ -25,7 +25,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -185,14 +195,43 @@ fun EchoApp(player: VlcPlayer) {
     }
 
     var showPlayer by remember { mutableStateOf(false) }
+    var focusTick by remember { mutableStateOf(0) }
+    val rootFocus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
     androidx.compose.runtime.CompositionLocalProvider(LocalOpenArtist provides { showPlayer = false; openArtist(it) }) {
-        Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier.fillMaxSize().focusRequester(rootFocus).focusable().onKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                val len = state.lengthMs
+                when {
+                    e.isCtrlPressed && e.key == Key.F || e.key == Key.Slash -> { view = View.Search; focusTick++; true }
+                    e.key == Key.Escape -> { if (showPlayer) showPlayer = false else { focusManager.clearFocus(); rootFocus.requestFocus() }; true }
+                    e.key == Key.Spacebar || e.key == Key.MediaPlayPause -> { player.togglePause(); true }
+                    e.isCtrlPressed && e.key == Key.DirectionRight || e.key == Key.MediaNext || e.key == Key.N -> { playback.next(); true }
+                    e.isCtrlPressed && e.key == Key.DirectionLeft || e.key == Key.MediaPrevious || e.key == Key.P -> { playback.previous(); true }
+                    e.key == Key.DirectionRight -> { player.seekTo((state.positionMs + 5000).coerceAtMost(len)); true }
+                    e.key == Key.DirectionLeft -> { player.seekTo((state.positionMs - 5000).coerceAtLeast(0)); true }
+                    e.key == Key.DirectionUp -> { volume = (volume + 0.05f).coerceAtMost(1f); true }
+                    e.key == Key.DirectionDown -> { volume = (volume - 0.05f).coerceAtLeast(0f); true }
+                    e.key == Key.L -> { playback.current?.let { playback.toggleLike(it) }; true }
+                    e.key == Key.S -> { playback.shuffle = !playback.shuffle; true }
+                    e.key == Key.R -> { playback.repeat = when (playback.repeat) { Repeat.Off -> Repeat.All; Repeat.All -> Repeat.One; Repeat.One -> Repeat.Off }; true }
+                    e.key == Key.Enter && playback.current != null -> { showPlayer = !showPlayer; true }
+                    e.isCtrlPressed && e.key == Key.One -> { view = View.Home; true }
+                    e.isCtrlPressed && e.key == Key.Two -> { view = View.Search; focusTick++; true }
+                    e.isCtrlPressed && e.key == Key.Three -> { view = View.Liked; true }
+                    e.isCtrlPressed && e.key == Key.Four -> { view = View.Community; true }
+                    else -> false
+                }
+            }
+        ) {
+            LaunchedEffect(Unit) { rootFocus.requestFocus() }
             Column(Modifier.fillMaxSize().padding(horizontal = 28.dp)) {
                 when (view) {
                     View.Home -> FeedHome(feed, { list, i -> playback.play(list, i) }, { view = View.Community })
                     View.Search ->
                         Column {
-                            GlassSearchField(query, { query = it }, { search() })
+                            GlassSearchField(query, { query = it }, focusTick) { search() }
                             SearchResults(searchStatus, songs, artistHits) { playback.play(songs, it) }
                         }
                     View.Liked -> SearchResults("Liked songs (${playback.liked.size})", playback.liked) { playback.play(playback.liked, it) }
@@ -218,7 +257,7 @@ fun EchoApp(player: VlcPlayer) {
             }
             Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 MiniPlayer(playback, state, player) { showPlayer = true }
-                NavPill(view) { view = it }
+                NavPill(view) { view = it; if (it == View.Search) focusTick++ }
             }
             if (showPlayer && playback.current != null) {
                 FullPlayer(playback, state, player, lyrics, volume, { volume = it }) { showPlayer = false }

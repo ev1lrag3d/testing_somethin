@@ -51,6 +51,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -147,7 +150,9 @@ fun NavPill(view: View, onNav: (View) -> Unit) {
 }
 
 @Composable
-fun GlassSearchField(query: String, onQuery: (String) -> Unit, onSearch: () -> Unit) {
+fun GlassSearchField(query: String, onQuery: (String) -> Unit, focusTick: Int, onSearch: () -> Unit) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(focusTick) { if (focusTick > 0) runCatching { focus.requestFocus() } }
     TextField(
         value = query, onValueChange = onQuery, singleLine = true, shape = RoundedCornerShape(50),
         placeholder = { Text("What do you want to play?") }, leadingIcon = { Icon(Icons.Filled.Search, null) },
@@ -155,7 +160,7 @@ fun GlassSearchField(query: String, onQuery: (String) -> Unit, onSearch: () -> U
             focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         ),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp).onKeyEvent {
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp).focusRequester(focus).onKeyEvent {
             if (it.key == Key.Enter && it.type == KeyEventType.KeyDown) { onSearch(); true } else false
         },
     )

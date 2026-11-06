@@ -116,6 +116,14 @@ fun SettingsScreen(playback: Playback, onShow: (String, List<SongItem>) -> Unit)
         Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 190.dp)) {
             Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
 
+            Heading("Keyboard shortcuts")
+            Text(
+                "Space play/pause  •  ← → seek 5 s  •  ↑ ↓ volume  •  N / Ctrl+→ next  •  P / Ctrl+← previous\n" +
+                    "L like  •  S shuffle  •  R repeat  •  Enter open/close player  •  Esc back  •  Ctrl+F or / search\n" +
+                    "Ctrl+1 Home  •  Ctrl+2 Search  •  Ctrl+3 Library  •  Ctrl+4 Community  •  media keys work while the app is focused",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
             Heading("Look")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
                 listOf("auto" to "Auto (follow Windows)", "light" to "Light", "dark" to "Dark").forEach { (mode, label) ->
